@@ -7,31 +7,19 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.4.5</version>
-		<relativePath/> </parent>
+		<relativePath/>
+	</parent>
 	<groupId>com.pj</groupId>
 	<artifactId>user-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>user-service</name>
 	<description>Service for user registration and authentication</description>
-	<url>https://example.com/user-service</url> <licenses>
-	<license>
-		<name>MIT License</name>
-		<url>https://opensource.org/licenses/MIT</url> </license>
-</licenses>
-	<developers>
-		<developer>
-			<name>P.J.</name>
-			<email>pj.developer@example.com</email> <organization>Example Corp</organization>
-			<organizationUrl>https://example.com</organizationUrl>  </developer>
-	</developers>
-	<scm>
-		<connection>scm:git:https://github.com/example/user-service.git</connection>
-		<developerConnection>scm:git:ssh://git@github.com/example/user-service.git</developerConnection>
-		<tag>v1.0.0</tag>  <url>https://github.com/example/user-service</url>  </scm>
 	<properties>
 		<java.version>21</java.version>
 		<spring-cloud.version>2024.0.1</spring-cloud.version>
-		<mapstruct.version>1.5.5.Final</mapstruct.version>  <lombok.version>1.18.30</lombok.version>    </properties>
+		<mapstruct.version>1.5.5.Final</mapstruct.version>
+		<lombok.version>1.18.30</lombok.version>
+	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
