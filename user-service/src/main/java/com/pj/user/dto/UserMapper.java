@@ -15,6 +15,5 @@ public interface UserMapper  {
     @Mapping(target = "password", ignore = true)
     UserEntity toEntity(UserRequest userRequest);
 
-    @Mapping(target = "password", ignore = true)
     User toJson(UserEntity user);
 }
