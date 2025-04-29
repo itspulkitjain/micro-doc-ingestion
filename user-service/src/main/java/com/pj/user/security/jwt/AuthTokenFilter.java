@@ -1,5 +1,6 @@
 package com.pj.user.security.jwt;
 
+import com.pj.user.exception.JwtTokenMalformedException;
 import com.pj.user.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
