@@ -1,0 +1,11 @@
+/mvnw text eol=lf
+*.cmd text eol=crlf
+
+# Handle Windows command scripts
+*.cmd text eol=crlf
+
+# Explicitly force LF for Java files
+*.java text eol=lf
+
+# Explicitly handle binary files
+*.{png,jpg,gif,pdf,zip,exe,dll,ico,woff,woff2,ttf,eot} binary
