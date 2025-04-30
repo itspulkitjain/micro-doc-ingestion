@@ -1,4 +1,6 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+* text=auto
+*.sh text eol=lf
 *.java text eol=lf
 *.{png,jpg,gif,pdf,zip,exe,dll,ico,woff,woff2,ttf,eot} binary
