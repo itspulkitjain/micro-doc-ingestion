@@ -1,0 +1,75 @@
+server:
+  port: 9092
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/doc_user?createDatabaseIfNotExist=true&serverTimezone=UTC
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# --- WARNING: Storing keys in config is insecure! This for local dev demo ONLY ---
+rsa:
+  key:
+    # Contents of private_key.pem file
+    private: |
+      -----BEGIN PRIVATE KEY-----
+      MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCeztuPG4GaSW7K
+      PJfYgsL8u8wB3D6R1PPS8BH5+yJ9foX1LW5WEbe8LOHSf2CLlGAZ6reBuv+qMWuJ
+      TSW3y+oVA8rLjCxhgvU7+yyWKSdSDWPVxF3zCqgJ6okOhhp5co+mWADr7C7Heta8
+      T1imij+MqJ+4Ar7YMoR0QaPIK83iU9bVJw0j1H2gorTWpIyTgyv85XUlPjtghmIy
+      ZNFzQ38/TStfdwcKcbDr3rp6/OC+d1pHO1TV0xh8BSrSUD40vWLjDQ1r2X3G1a2M
+      LLdssQJXZSjckq+MhnmQP2SKbE9LTB/sJ5r3J9YLE6oRn/LxgEX7LYKkDcA27h3A
+      +A9xlysfAgMBAAECggEANtnj4+3wOcYbSibbm6CukHSc5heYVO5kuPrKerlPFGFb
+      C3ABqCC+gXRPG1F7mzpIZys27swT+kjPh8Dpwi3gUBnbNarYuWVuJqV+pO7Z8fFG
+      BlOoz4VivOoRJL8U7dWv4BiNWO9eyO+Ys7oEOKGPiZnEcN4h5LKuJSl21HCsz/rx
+      6c9C/RJhcO1xE0ZZtI6F98F1AAYiVH6GyKzOek10xsOW1agtCuY25rRaOYQluLzc
+      RVogxvTUUwNfv4Fek2pRK3/SgOev69zJKka+8wGWgxTYeAREHmM0Wjp3XbZP4b4E
+      HpfRZfAavAa8GU8oVozpQOycnJtIu+gT2ZtbQ2wcQQKBgQDOeeygQtOC2RdMh+B4
+      JC5AEWVK4s/XQ4FiAq7JdwiS+NXuTIQYjCLnJGgzCEJM5AYyvZ7agodpV1h5z0La
+      /2asog6JXBiP4nQVr4v845e8qPbqK/gUBHdqYz4boiZVDpDUY0wq3dsr7I/dvBGV
+      oJIPRytAidCF03amAwCr4M48ZwKBgQDE5gEODpaBxsnEfnPz695TN40673mg7aVg
+      XuYJtuGt72yihyz8e3dYlYdv/nDwcd5Yxr7Vmkz1fVgFQdRdUY6S5xiBP6KzftCM
+      st/d2KpsN19SUDGzKShoGMwRN7ypwkB0JrEvnYMfgm2hW6BZuRlIPBAJ0CQbI3I5
+      EZ6rAnloiQKBgGzQIH4M+b7ZfcfdS9TE7ILjKAihI3uEnejzFP4jdydNcCDXvj3Z
+      jINX0noifh5bhVC0UcVCSO6hE4WOTuNu+cM83IBTQraBV0AedZ3eq5bHTOj4JxMV
+      j4FHr/GMMLteo8DqW7ezl8+8Kc1nUbUTHCZlEUw/1N7SJJM0vePW45k9AoGAd5Sg
+      q2LcsXCDdZy+2zMy0SN52IM8QSpTN9Yqq1ewdCxms8aY4bYyY1Bc8v16pezh9tSt
+      bZjKiIVZgcfbK9muVzWWwlhdfdnU2r6AC4Hc7uAqOhmONZsXeTEmLobFQ+w/rMsa
+      7SoiSm6yGj9FgXhTDHW939fTNdAvPM2gqYdVKNECgYA7zmGdWqH2qcaDVw+lfFCw
+      hr/n0T0x22BzMFvxq3JWCeFGgfcCiqWJxbxe4pKsxbK8UY9Mq4Plt/jGfvNGjrnk
+      4/1qfF7TmMRAPj+2Rw7Io+OnUoYXKTBhZN3TlzbZIT5T8Or0jv1olFVuxjPvIYex
+      4bHXv+rQ61uu58EniQAJ/w==
+      -----END PRIVATE KEY-----
+    # Contents of public_key.pem file
+    public: |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAns7bjxuBmkluyjyX2ILC
+      /LvMAdw+kdTz0vAR+fsifX6F9S1uVhG3vCzh0n9gi5RgGeq3gbr/qjFriU0lt8vq
+      FQPKy4wsYYL1O/ssliknUg1j1cRd8wqoCeqJDoYaeXKPplgA6+wux3rWvE9Ypoo/
+      jKifuAK+2DKEdEGjyCvN4lPW1ScNI9R9oKK01qSMk4Mr/OV1JT47YIZiMmTRc0N/
+      P00rX3cHCnGw6966evzgvndaRztU1dMYfAUq0lA+NL1i4w0Na9l9xtWtjCy3bLEC
+      V2Uo3JKvjIZ5kD9kimxPS0wf7Cea9yfWCxOqEZ/y8YBF+y2CpA3ANu4dwPgPcZcr
+      HwIDAQAB
+      -----END PUBLIC KEY-----
+
+api:
+  gateway:
+    key: pjjjapidocservicemicroproject321!!
