@@ -73,3 +73,7 @@ rsa:
 api:
   gateway:
     key: pjjjapidocservicemicroproject321!!
+
+logging:
+  level:
+    org.springframework.security: DEBUG

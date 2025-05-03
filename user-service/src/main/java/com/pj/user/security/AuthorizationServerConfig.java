@@ -15,9 +15,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -78,6 +81,10 @@ public class AuthorizationServerConfig {
                 new OAuth2AuthorizationServerConfigurer();
         RequestMatcher authorizationServerEndpointsMatcher =
                 authorizationServerConfigurer.getEndpointsMatcher();
+        authorizationServerConfigurer
+                .authorizationEndpoint(authorizationEndpoint ->
+                        authorizationEndpoint.consentPage("/oauth2/consent")
+                );
         http
                 .securityMatcher(authorizationServerEndpointsMatcher)
                 .authorizeHttpRequests((authorize) -> authorize
@@ -96,11 +103,11 @@ public class AuthorizationServerConfig {
         return http.build();
     }
 
-
     @Bean
     @Order(2)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/login", "/api/users/register").permitAll()
                         .anyRequest().authenticated()
@@ -110,32 +117,52 @@ public class AuthorizationServerConfig {
     }
 
     @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
     public RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
         JdbcRegisteredClientRepository repository = new JdbcRegisteredClientRepository(this.jdbcTemplate);
         String clientId = "api-gateway";
         RegisteredClient existingClient = repository.findByClientId(clientId);
+        ClientSettings clientSettings = ClientSettings.builder()
+                .requireAuthorizationConsent(true)
+                .requireProofKey(false) // *** Temporarily disable PKCE requirement ***
+                .build();
+
+        Set<AuthorizationGrantType> grantTypes = Set.of(
+                AuthorizationGrantType.AUTHORIZATION_CODE,
+                AuthorizationGrantType.REFRESH_TOKEN,
+                AuthorizationGrantType.CLIENT_CREDENTIALS,
+                AuthorizationGrantType.PASSWORD // *** ADD PASSWORD GRANT TYPE ***
+        );
+
         if (existingClient == null) {
             RegisteredClient apiGatewayClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId(clientId)
                 .clientSecret(passwordEncoder.encode(apiGatewayKey))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://127.0.0.1:8080/login/oauth2/code/" + clientId)
+                .authorizationGrantTypes(types -> types.addAll(grantTypes))
                 .redirectUri("http://localhost:8080/login/oauth2/code/" + clientId)
-                .scope(OidcScopes.OPENID)
-                .scope(OidcScopes.PROFILE)
+                .redirectUri("http://127.0.0.1:8080/login/oauth2/code/" + clientId)
                 .scope("read_docs")
                 .scope("write_docs")
-                .clientSettings(ClientSettings.builder()
-                        .requireAuthorizationConsent(true)
-                        .build())
+                .clientSettings(clientSettings)
                 .build();
             repository.save(apiGatewayClient);
             System.out.println("Registered new OAuth2 client: " + clientId);
         } else {
-            System.out.println("OAuth2 client already registered: " + clientId);
+            // *** Update existing client to add password grant and update settings ***
+            existingClient = RegisteredClient.from(existingClient)
+                    .authorizationGrantTypes(types -> {
+                        types.clear(); // Clear existing ones first
+                        types.addAll(grantTypes); // Add all desired types
+                    })
+                    .clientSettings(clientSettings) // Apply updated settings
+                    .build();
+            repository.save(existingClient);
+            log.info("Updated existing OAuth2 client '{}' grant types and settings.", clientId);
         }
         return repository;
     }

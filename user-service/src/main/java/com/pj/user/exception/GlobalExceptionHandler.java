@@ -1,6 +1,9 @@
 package com.pj.user.exception;
 
 import com.pj.user.dto.UserResponse;
+import com.pj.user.security.AuthorizationServerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -11,8 +14,11 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<UserResponse> handleGeneralException(Exception ex, WebRequest request) {
+        log.error("GlobalExceptionHandler caught unexpected error for request {}:", request.getDescription(false), ex);
         UserResponse response = new UserResponse();
         response.setSuccess(false);
         response.setErrorMsg("An unexpected error occurred: " + ex.getLocalizedMessage());
@@ -22,6 +28,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<UserResponse> handleUserAlreadyExistsException(UserAlreadyExistsException ex, WebRequest request) {
+        log.error("GlobalExceptionHandler caught unexpected error for request {}:", request.getDescription(false), ex);
         UserResponse response = new UserResponse();
         response.setSuccess(false);
         response.setErrorMsg(ex.getLocalizedMessage());
@@ -31,6 +38,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<UserResponse> handleInvalidCredentialsException(InvalidCredentialsException ex, WebRequest request) {
+        log.error("GlobalExceptionHandler caught unexpected error for request {}:", request.getDescription(false), ex);
         UserResponse response = new UserResponse();
         response.setSuccess(false);
         response.setErrorMsg(ex.getLocalizedMessage());

@@ -79,7 +79,7 @@ public class UserServiceImpl implements UserService{
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Optional<UserEntity> optionalUserEntity = repo.findByUsername(username);
         if (!optionalUserEntity.isPresent()) {
-            throw new UserNotFoundException("User not found with username: " + username);
+            throw new UserNotFoundException("User not found wi  th username: " + username);
         }
         UserEntity userEntity = optionalUserEntity.get();
         Set<String> roles = userEntity.getRoles().stream()
