@@ -10,14 +10,32 @@ import com.pj.user.exception.UserAlreadyExistsException;
 import com.pj.user.exception.UserNotFoundException;
 import com.pj.user.repo.RoleRepo;
 import com.pj.user.repo.UserRepo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2Token;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.context.AuthorizationServerContextHolder;
+import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.token.DefaultOAuth2TokenContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -29,6 +47,8 @@ import java.util.stream.Collectors;
 @Service
 public class UserServiceImpl implements UserService{
 
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
     @Autowired
     UserRepo repo;
 
@@ -37,6 +57,20 @@ public class UserServiceImpl implements UserService{
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private RegisteredClientRepository registeredClientRepository;
+
+    @Autowired
+    @Lazy
+    private OAuth2AuthorizationService authorizationService;
+
+    @Autowired
+    @Lazy
+    private OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator;
+
+    @Autowired
+    private AuthorizationServerSettings authorizationServerSettings;
 
     @Override
     public UserResponse registerUser(UserRequest userRequest) {
@@ -89,5 +123,61 @@ public class UserServiceImpl implements UserService{
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
         return new User(userEntity.getUsername(), userEntity.getPassword(), authorities);
+    }
+
+    @Override
+    public OAuth2AccessToken getOAuth2AccessToken(UserRequest request, Authentication principal) throws ResponseStatusException {
+        log.debug("getOAuth2AccessToken method call");
+        String clientId = "api-gateway";
+        RegisteredClient registeredClient = registeredClientRepository.findByClientId(clientId);
+        log.debug("--- Building Token Context ---");
+        log.debug("RegisteredClient: {}", (registeredClient != null ? registeredClient.getClientId() : "NULL"));
+        log.debug("Principal: {}", (principal != null ? principal.getName() : "NULL"));
+        log.debug("Principal Authenticated: {}", (principal != null ? principal.isAuthenticated() : "N/A"));
+        log.debug("RegisteredClient Scopes: {}", (registeredClient != null ? registeredClient.getScopes() : "NULL"));
+        log.debug("AuthorizationServerSettings: {}", (this.authorizationServerSettings != null ? "Present" : "NULL")); // Check if settings bean is injected
+        if (registeredClient == null) {
+            log.error("Client registration not found for clientId: {}. Cannot generate token.", clientId);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Client configuration error.");
+        }
+
+        if (!registeredClient.getAuthorizationGrantTypes().contains(AuthorizationGrantType.AUTHORIZATION_CODE) &&
+                !registeredClient.getAuthorizationGrantTypes().contains(AuthorizationGrantType.PASSWORD)) {
+            log.error("Client '{}' is not authorized for user-based grant types.", clientId);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Client not authorized for this operation.");
+        }
+        log.debug("tokenContext call");
+        OAuth2TokenContext tokenContext = DefaultOAuth2TokenContext.builder()
+                .registeredClient(registeredClient)
+                .principal(principal)
+//                .authorizationServerContext(AuthorizationServerContextHolder.getContext())
+//                .(this.authorizationServerSettings)
+                .authorizedScopes(registeredClient.getScopes())
+                .tokenType(OAuth2TokenType.ACCESS_TOKEN)
+                .build();
+
+        OAuth2Token generatedToken = tokenGenerator.generate(tokenContext);
+        if (generatedToken == null) {
+            log.error("Token generator returned null for user: {}", request.getUsername());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Token generation failed.");
+        }
+        if (!(generatedToken instanceof OAuth2AccessToken)) {
+            log.error("Generated token is not an OAuth2AccessToken for user: {}", request.getUsername());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate access token type.");
+        }
+
+        OAuth2AccessToken accessToken = (OAuth2AccessToken) generatedToken;
+        log.info("Successfully generated custom access token for user: {}", request.getUsername());
+        log.debug("authorization call");
+
+        OAuth2Authorization authorization = OAuth2Authorization.withRegisteredClient(registeredClient)
+                .principalName(principal.getName())
+                .authorizationGrantType(new AuthorizationGrantType("custom_password"))
+                .authorizedScopes(registeredClient.getScopes())
+                .token(accessToken)
+                .build();
+        authorizationService.save(authorization);
+        log.debug("Saved authorization for custom token flow for user: {}", request.getUsername());
+        return accessToken;
     }
 }

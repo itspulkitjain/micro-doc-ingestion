@@ -14,7 +14,7 @@ spring:
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/oauth2/**, /login, /logout, /api/users/register
+            - Path=/oauth2/**, /login, /logout, /api/users/register, /api/users/auth/token
 
         - id: document-ingestion-service
           uri: lb://document-ingestion-service

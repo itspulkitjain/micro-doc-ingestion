@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -26,14 +28,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    @ExceptionHandler(UserAlreadyExistsException.class)
-    public ResponseEntity<UserResponse> handleUserAlreadyExistsException(UserAlreadyExistsException ex, WebRequest request) {
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<UserResponse> handleAuthenticationException(AuthenticationException ex, WebRequest request) {
         log.error("GlobalExceptionHandler caught unexpected error for request {}:", request.getDescription(false), ex);
         UserResponse response = new UserResponse();
         response.setSuccess(false);
-        response.setErrorMsg(ex.getLocalizedMessage());
+        response.setErrorMsg("Authentication failed: Invalid credentials: " + ex.getLocalizedMessage());
         response.setErrorCode(50002);
-        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
@@ -42,8 +44,18 @@ public class GlobalExceptionHandler {
         UserResponse response = new UserResponse();
         response.setSuccess(false);
         response.setErrorMsg(ex.getLocalizedMessage());
-        response.setErrorCode(50003);
+        response.setErrorCode(50004);
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<UserResponse> handleUserAlreadyExistsException(UserAlreadyExistsException ex, WebRequest request) {
+        log.error("GlobalExceptionHandler caught unexpected error for request {}:", request.getDescription(false), ex);
+        UserResponse response = new UserResponse();
+        response.setSuccess(false);
+        response.setErrorMsg(ex.getLocalizedMessage());
+        response.setErrorCode(50003);
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(UserNotFoundException.class)
@@ -51,7 +63,8 @@ public class GlobalExceptionHandler {
         UserResponse response = new UserResponse();
         response.setSuccess(false);
         response.setErrorMsg(ex.getLocalizedMessage());
-        response.setErrorCode(50004); // Not Found
+        response.setErrorCode(50005); // Not Found
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
+
 }

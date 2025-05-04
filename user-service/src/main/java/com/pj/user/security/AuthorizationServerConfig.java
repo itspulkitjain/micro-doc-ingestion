@@ -28,6 +28,7 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
@@ -37,7 +38,9 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -81,10 +84,7 @@ public class AuthorizationServerConfig {
                 new OAuth2AuthorizationServerConfigurer();
         RequestMatcher authorizationServerEndpointsMatcher =
                 authorizationServerConfigurer.getEndpointsMatcher();
-        authorizationServerConfigurer
-                .authorizationEndpoint(authorizationEndpoint ->
-                        authorizationEndpoint.consentPage("/oauth2/consent")
-                );
+        authorizationServerConfigurer.oidc(Customizer.withDefaults());
         http
                 .securityMatcher(authorizationServerEndpointsMatcher)
                 .authorizeHttpRequests((authorize) -> authorize
@@ -109,7 +109,7 @@ public class AuthorizationServerConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers("/login", "/api/users/register").permitAll()
+                        .requestMatchers("/login", "/api/users/register", "/api/users/auth/token").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(Customizer.withDefaults());
@@ -128,41 +128,39 @@ public class AuthorizationServerConfig {
         RegisteredClient existingClient = repository.findByClientId(clientId);
         ClientSettings clientSettings = ClientSettings.builder()
                 .requireAuthorizationConsent(true)
-                .requireProofKey(false) // *** Temporarily disable PKCE requirement ***
+                .requireProofKey(true)
                 .build();
 
         Set<AuthorizationGrantType> grantTypes = Set.of(
                 AuthorizationGrantType.AUTHORIZATION_CODE,
-                AuthorizationGrantType.REFRESH_TOKEN,
-                AuthorizationGrantType.CLIENT_CREDENTIALS,
-                AuthorizationGrantType.PASSWORD // *** ADD PASSWORD GRANT TYPE ***
+                AuthorizationGrantType.REFRESH_TOKEN
+        );
+
+        Set<String> scopes = Set.of(
+                OidcScopes.OPENID, OidcScopes.PROFILE, "read_docs", "write_docs"
         );
 
         if (existingClient == null) {
             RegisteredClient apiGatewayClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId(clientId)
-                .clientSecret(passwordEncoder.encode(apiGatewayKey))
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantTypes(types -> types.addAll(grantTypes))
-                .redirectUri("http://localhost:8080/login/oauth2/code/" + clientId)
-                .redirectUri("http://127.0.0.1:8080/login/oauth2/code/" + clientId)
-                .scope("read_docs")
-                .scope("write_docs")
-                .clientSettings(clientSettings)
-                .build();
+                    .clientId(clientId)
+                    .clientSecret(passwordEncoder.encode(apiGatewayKey))
+                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                    .authorizationGrantTypes(types -> types.addAll(grantTypes))
+                    .redirectUri("http://127.0.0.1:8080/login/oauth2/code/" + clientId)
+                    .redirectUri("http://localhost:8080/login/oauth2/code/" + clientId)
+                    .scopes(s -> s.addAll(scopes))
+                    .clientSettings(clientSettings)
+                    .build();
             repository.save(apiGatewayClient);
-            System.out.println("Registered new OAuth2 client: " + clientId);
+            log.info("Registered new OAuth2 client: {} with scopes: {}", clientId, scopes);
         } else {
-            // *** Update existing client to add password grant and update settings ***
             existingClient = RegisteredClient.from(existingClient)
-                    .authorizationGrantTypes(types -> {
-                        types.clear(); // Clear existing ones first
-                        types.addAll(grantTypes); // Add all desired types
-                    })
-                    .clientSettings(clientSettings) // Apply updated settings
+                    .authorizationGrantTypes(types -> { types.clear(); types.addAll(grantTypes); })
+                    .scopes(s -> { s.clear(); s.addAll(scopes); })
+                    .clientSettings(clientSettings)
                     .build();
             repository.save(existingClient);
-            log.info("Updated existing OAuth2 client '{}' grant types and settings.", clientId);
+            log.info("Updated existing OAuth2 client '{}'.", clientId);
         }
         return repository;
     }
@@ -213,6 +211,14 @@ public class AuthorizationServerConfig {
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder().build();
+    }
+
+    @Bean
+    OAuth2TokenGenerator<?> tokenGenerator(JWKSource<SecurityContext> jwkSource, OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer) {
+        var jwtGenerator = new JwtGenerator(
+                new NimbusJwtEncoder(jwkSource));
+        jwtGenerator.setJwtCustomizer(jwtTokenCustomizer);
+        return jwtGenerator;
     }
 
     @Bean
