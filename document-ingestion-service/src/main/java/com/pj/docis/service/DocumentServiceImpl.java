@@ -3,12 +3,15 @@ package com.pj.docis.service;
 import com.pj.docis.dto.DocumentMapper;
 import com.pj.docis.dto.DocumentRequest;
 import com.pj.docis.dto.DocumentResponse;
+import com.pj.docis.entity.DocumentElasticsearch;
 import com.pj.docis.entity.DocumentEntity;
+import com.pj.docis.repository.DocumentElasticsearchRepository;
 import com.pj.docis.repository.DocumentRepo;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -20,6 +23,16 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private DocumentRepo documentRepo;
+
+    @Autowired
+    private DocumentElasticsearchRepository elasticsearchRepository;
+
+    @Autowired
+    private TextExtractionService textExtractionService;
+
+    @Autowired
+    private ElasticsearchOperations elasticsearchOperations;
+
 
     @Override
     @Transactional
@@ -33,10 +46,20 @@ public class DocumentServiceImpl implements DocumentService {
             /**
              * @implNote need to store file to AWS
              */
-            String fileUrl = awsStoreFile(file); // Implement this method
+            String fileUrl = awsStoreFile(file); // TODO: Implement this method
             document.setFileUrl(fileUrl);
             document.setAuthor("U01");
             document = documentRepo.saveAndFlush(document);
+
+            DocumentElasticsearch elasticDocument = DocumentMapper.mapper.toElasticsearchDocument(document);
+            String extractedText = "";
+            try {
+                extractedText = textExtractionService.extractText(document.getContent(), document.getMimeType());
+            } catch (IOException e) {
+                System.err.println("Failed to extract text for document ID " + document.getId() + ": " + e.getMessage());
+            }
+            elasticDocument.setExtractedContent(extractedText);
+            elasticsearchRepository.save(elasticDocument);
             return getDocumentResponse(document);
         } catch (IOException e) {
             throw new RuntimeException("Error uploading document: " + e.getMessage(), e);
@@ -80,5 +103,12 @@ public class DocumentServiceImpl implements DocumentService {
     public DocumentEntity getDocumentContent(Long id) {
         return documentRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Document not found with id: " + id));
+    }
+
+    @Override
+    public List<DocumentElasticsearch> simpleSearchDocuments(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) { return List.of(); }
+        return elasticsearchRepository.findByTitleOrFileNameOrExtractedContentOrAuthorOrDescriptionContaining(
+                keyword, keyword, keyword, keyword, keyword);
     }
 }

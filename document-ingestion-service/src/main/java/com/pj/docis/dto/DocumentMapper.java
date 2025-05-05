@@ -1,5 +1,6 @@
 package com.pj.docis.dto;
 
+import com.pj.docis.entity.DocumentElasticsearch;
 import com.pj.docis.entity.DocumentEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -24,5 +25,7 @@ public interface DocumentMapper {
     Document toJson(DocumentEntity documentEntity);
 
     List<Document> toJsons(List<DocumentEntity> documentEntities);
+
+    DocumentElasticsearch toElasticsearchDocument(DocumentEntity entity);
 
 }
