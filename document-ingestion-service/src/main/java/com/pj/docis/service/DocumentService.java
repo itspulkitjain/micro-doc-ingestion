@@ -21,4 +21,6 @@ public interface DocumentService {
     DocumentEntity getDocumentContent(Long id);
 
     List<DocumentElasticsearch> simpleSearchDocuments(String keyword);
+
+    List<DocumentElasticsearch> advancedSearchDocuments(String query);
 }

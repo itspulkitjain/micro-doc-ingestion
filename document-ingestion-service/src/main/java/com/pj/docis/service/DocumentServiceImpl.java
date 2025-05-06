@@ -10,6 +10,9 @@ import com.pj.docis.repository.DocumentRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.StringQuery;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
@@ -110,5 +114,29 @@ public class DocumentServiceImpl implements DocumentService {
         if (keyword == null || keyword.trim().isEmpty()) { return List.of(); }
         return elasticsearchRepository.findByTitleOrFileNameOrExtractedContentOrAuthorOrDescriptionContaining(
                 keyword, keyword, keyword, keyword, keyword);
+    }
+
+    @Override
+    public List<DocumentElasticsearch> advancedSearchDocuments(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return List.of();
+        }
+
+        String queryString = String.format(
+                """
+                {
+                  "multi_match": {
+                    "query": "%s",
+                    "fields": ["title^3", "fileName", "extractedContent^5", "author", "description", "metadataString"],
+                    "fuzziness": "AUTO"
+                  }
+                }
+                """, query.replace("\"", "\\\""));
+
+        StringQuery stringQuery = new StringQuery(queryString);
+        SearchHits<DocumentElasticsearch> searchHits = elasticsearchOperations.search(stringQuery, DocumentElasticsearch.class);
+        return searchHits.stream()
+                .map(SearchHit::getContent)
+                .collect(Collectors.toList());
     }
 }

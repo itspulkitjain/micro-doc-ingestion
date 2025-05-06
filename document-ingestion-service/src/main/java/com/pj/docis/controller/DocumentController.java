@@ -61,6 +61,17 @@ public class DocumentController {
             return ResponseEntity.ok(results);
         }
     }
+
+    @GetMapping("/advanced/search")
+    public ResponseEntity<List<DocumentElasticsearch>> advancedSearchDocuments(@RequestParam String query) {
+        List<DocumentElasticsearch> results = documentService.advancedSearchDocuments(query);
+        if (results.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.ok(results);
+        }
+    }
+
     @GetMapping("/download/{id}")
     public ResponseEntity<byte[]> downloadDocument(@PathVariable Long id) {
         DocumentEntity document = documentService.getDocumentContent(id);
