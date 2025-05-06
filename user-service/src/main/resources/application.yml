@@ -2,7 +2,7 @@ server:
   port: 9092
 
 spring:
-  application:
+  application:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
     name: user-service
   datasource:
     url: jdbc:mysql://localhost:3306/doc_user?createDatabaseIfNotExist=true&serverTimezone=UTC
